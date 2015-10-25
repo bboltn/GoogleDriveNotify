@@ -1,11 +1,8 @@
 function folderMonitor() {
 
   //CONFIG
-  var emails = "brian.bolton@gmail.com,harryebolton@gmail.com,imtoddecker@yahoo.com,eric.bolton@gmail.com";
-  //var emails = "brian.bolton@gmail.com";
-  //https://drive.google.com/drive/folders/{id}
-  var folderId = "0B7l9d2idKpTvXzl4dGh2T1lZeUE";
-  //var folderId = "0B7h-jwFjcCXgT01yVHRCUEtrdUk";
+  var emails = "#######";
+  var folderId = "#######";
 
   var showsDrive = getShowsFromDrive(folderId, []);
   var showsSheet = getShowsFromSpreadSheet();
