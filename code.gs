@@ -1,53 +1,28 @@
 //CONFIG
-// var adminemail = "brian.bolton@gmail.com";
-// var emails = "brian.bolton@gmail.com,harryebolton@gmail.com,imtoddecker@yahoo.com,eric.bolton@gmail.com";
-// var folderId = "0B7l9d2idKpTvXzl4dGh2T1lZeUE";
-
-// TEST INFO
-var adminemail = "brian.bolton@gmail.com";
-var emails = "brian.bolton@gmail.com";
-////https://drive.google.com/drive/folders/{id}
-var folderId = "0B7h-jwFjcCXgT01yVHRCUEtrdUk";
+var adminemail = "###";
+var emails = "###";
+var folderId = "####";
 
 // NEW FILE EMAIL TEXT
-var newfilesubject = "Eric Uploaded a new Movie or TV Show";
-var newfiletxtmsg = "New file has been added at ";
-var newfilehtmlmsg = "New file(s) have been added.";
-
-// DELETED FILE EMAIL TEXT
-var deletedfilesubject = "Eric Deleted a show";
-var deletedfiletxtmsg = "File has been deleted at ";
-var deletedfilehtmlmsg = "These File(s) have been deleted.";
-
-// CHANGED FILE EMAIL TEXT
-var changedfilesubject = "Eric changed a show";
-var changedfiletxtmsg = "File has been changed at ";
-var changedfilehtmlmsg = "These File(s) have been changed.";
-
-// NOTIFY ON WHAT?
-var notifyOfDeleted = true;
-var notifyOfAdded = true;
-var notifyOfChange = true;
+var newfilesubject = "###";
 
 var schedule = 2; //1,2,4,6,8,12
-
+var past = new Date();
+past.setHours(past.getHours() - schedule);
 
 function folderMonitor() {
 
-  var result = getShowsFromDrive(folderId, [], [], schedule);
+  var showsDrive = getShowsFromDrive(folderId, []);
+  var showsDriveList = convertToList(showsDrive);
   var showsSheet = getShowsFromSpreadSheet();
+  
+  var newFiles = getFileDiff(showsDriveList, showsSheet);
+  var deletedFiles = getFileDiff(showsSheet, showsDriveList);
+  var changedFiles = getChangedFiles(showsDrive, newFiles);
 
-  var showsDrive = result[0];
-  var changedFiles = result[1];
-  
-  log("showsDrive: " + showsDrive);
-  log("showsSheet: " + showsSheet);
-  
-  var newFiles = getFileDiff(showsDrive, showsSheet);
-  var deletedFiles = getFileDiff(showsSheet, showsDrive);
-  
   log("newFiles: " + newFiles);
   log("deletedFiles: " + deletedFiles);
+  log("changedFiles: " + changedFiles);
   
   //update sheet
   if (newFiles.length > 0 || deletedFiles.length > 0) {
@@ -58,40 +33,38 @@ function folderMonitor() {
     log("Do not update show list!");
   }
 
-  if (notifyOfAdded && newFiles.length > 0) {
-      sendEmail(newFiles, newfilesubject, newfiletxtmsg, newfilehtmlmsg);
+  if (newFiles.length > 0 || deletedFiles.length > 0 || changedFiles.length > 0) {
+      sendEmail(newFiles, deletedFiles, changedFiles, newfilesubject);
   }
-
-  if (notifyOfDeleted && deletedFiles.length > 0) {
-      sendEmail(deletedFiles, deletedfilesubject, deletedfiletxtmsg, deletedfilehtmlmsg);
-  }
-
-  if (notifyOfChange && changedFiles.length > 0) {
-      sendEmail(changedFiles, changedfilesubject, changedfiletxtmsg, changedfilehtmlmsg);
-  }
-
-  MailApp.sendEmail(adminemail, "It is emailing!",
-    "test run successful");
 }
 
-function sendEmail(files, subject, txtmsg, htmlmsg) {
-      //Create email html body with a link to the monitored folder 
+function buildFileULList(files, title) {
+  var newStr = "";
+  if (files.length > 0) {
+    newStr = "<p>" + title + "</p><ul>";
+    for (var i = 0; i < files.length; i++) {
+      newStr += "<li>" + files[i] + "</li>";
+    }
+    newStr += "</ul>";
+  }
+  return newStr;
+}
+
+function sendEmail(newFiles, deletedFiles, changedFiles, subject) {
+    //Create email html body with a link to the monitored folder 
     var folderURL = "https://drive.google.com/drive/folders/" + folderId;
 
-    var fileString = "<ul>";
-    for (var i = 0; i < files.length; i++) {
-      fileString += "<li>" + files[i] + "</li>";
-    }
-    fileString += "</ul>";
+    var newStr =  buildFileULList(newFiles, "New Files") +
+                  buildFileULList(deletedFiles, "Deleted Files") +
+                  buildFileULList(changedFiles, "Changed Files");
 
     var message = "<body>" +
-                  "<p>" + htmlmsg + "</p>" +
                   "<p><a href=" + folderURL + ">Open folder</a></p>" +
-                  fileString +
+                  newStr +
                   "</body>";
 
     MailApp.sendEmail(emails, subject,
-      txtmsg + folderURL, {htmlBody: message});
+      "Go here to view changes " + folderURL, {htmlBody: message});
 }
 
 function getFileDiff(lfSide, rtSide) {
@@ -108,31 +81,43 @@ function getFileDiff(lfSide, rtSide) {
   return files;
 }
 
-function getShowsFromDrive(folderId, shows, changed, schedule) {
+function getChangedFiles(showsDrive, newFiles) {
+  var changed = [];
+  for (var i = 0; i < showsDrive.length; i++) {
+    var file = showsDrive[i];
+    if (file.getLastUpdated().getTime() > past.getTime() && newFiles.indexOf(file.getName()) == -1) {
+      changed.push(file.getName());
+    }
+  }
+  return changed;
+}
+
+function getShowsFromDrive(folderId, shows) {
   
     var theFolder = DriveApp.getFolderById(folderId);
     var files = theFolder.getFiles();
   
     while (files.hasNext()) {
       var file = files.next();
-
-      var updated = file.getLastUpdated();
-      log("updated: " + updated);
-      var now = Date.now();
-
-      shows.push(file.getName());
+      shows.push(file);
     }
   
     var subfolders = theFolder.getFolders();
   
     while (subfolders.hasNext()) {
       var folder = subfolders.next();
-      result = getShowsFromDrive(folder.getId(), shows, changed, schedule);
-      shows = result[0];
-      changed = result[1];
+      shows = getShowsFromDrive(folder.getId(), shows);
     }
       
-    return [shows, changed];
+    return shows;
+}
+
+function convertToList(files) {
+  var filenames = [];
+  for(var i = 0; i < files.length; i++) {
+    filenames.push(files[i].getName());
+  }
+  return filenames;
 }
 
 function getShowsFromSpreadSheet()
