@@ -44,9 +44,6 @@ function folderMonitor() {
       MailApp.sendEmail(emails, "Eric Uploaded a new Movie or TV Show",
         "New file has been added at " + folderURL, {htmlBody: message});
   }
-
-//  MailApp.sendEmail("brian.bolton@gmail.com", "It is emailing!",
-  //  "test run successful");
 }
 
 function getFileDiff(lfSide, rtSide) {
