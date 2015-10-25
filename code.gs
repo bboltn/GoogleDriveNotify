@@ -41,7 +41,7 @@ function folderMonitor() {
                     fileString +
                     "</body>";
 
-      MailApp.sendEmail(emails, "Eric Uploaded a new Movie or TV Show",
+      MailApp.sendEmail(emails, "A new file has been added",
         "New file has been added at " + folderURL, {htmlBody: message});
   }
 }
